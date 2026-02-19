@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Vent Box</title>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1410;
+    --paper: #f5f0e8;
+    --ink: #2a1f0e;
+    --ember: #ff4500;
+    --ember2: #ff8c00;
+    --ember3: #ffd700;
+  }
+
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Subtle vignette */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── INTRO SCREEN ─── */
+  #intro {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    animation: fadeUp 0.8s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  #intro h1 {
+    font-family: 'Special Elite', serif;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    color: #f5e6c8;
+    letter-spacing: 2px;
+    text-shadow: 0 0 30px rgba(255,100,0,0.3);
+  }
+
+  #intro p {
+    color: #9a8060;
+    font-size: 0.95rem;
+    font-weight: 300;
+    max-width: 360px;
+    line-height: 1.6;
+  }
+
+  /* ─── PAPER ─── */
+  #paper-wrap {
+    position: relative;
+    margin-top: 24px;
+  }
+
+  #paper {
+    width: min(520px, 90vw);
+    min-height: 280px;
+    background: var(--paper);
+    border-radius: 2px;
+    padding: 32px 36px 24px;
+    position: relative;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.4);
+    transform-origin: center bottom;
+    transition: box-shadow 0.3s;
+  }
+
+  /* Lined paper effect */
+  #paper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      transparent,
+      transparent 31px,
+      rgba(180,160,120,0.25) 31px,
+      rgba(180,160,120,0.25) 32px
+    );
+    background-position: 0 40px;
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  /* Red margin line */
+  #paper::after {
+    content: '';
+    position: absolute;
+    left: 56px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(200,100,100,0.3);
+    pointer-events: none;
+  }
+
+  #vent-input {
+    width: 100%;
+    min-height: 200px;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: 'Special Elite', serif;
+    font-size: 1.1rem;
+    color: var(--ink);
+    line-height: 32px;
+    padding-left: 18px;
+    caret-color: #8b4513;
+    position: relative;
+    z-index: 1;
+  }
+
+  #vent-input::placeholder {
+    color: #c0a882;
+    font-family: 'Special Elite', serif;
+  }
+
+  /* ─── BUTTONS ─── */
+  .btn-row {
+    display: flex;
+    gap: 14px;
+    margin-top: 20px;
+    justify-content: center;
+  }
+
+  .action-btn {
+    padding: 12px 28px;
+    border: none;
+    border-radius: 4px;
+    font-family: 'Special Elite', serif;
+    font-size: 1.05rem;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .action-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  .action-btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+
+  .action-btn:not(:disabled):active { transform: translateY(0); }
+
+  #shred-btn {
+    background: #2a2a2a;
+    color: #e0d0b0;
+    border: 1px solid #444;
+  }
+
+  #burn-btn {
+    background: linear-gradient(135deg, #c0370a, #ff6a00);
+    color: #fff5e0;
+    box-shadow: 0 2px 12px rgba(255,100,0,0.3);
+  }
+
+  /* ─── CANVAS (effects) ─── */
+  #fx-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* ─── SHRED STRIPS ─── */
+  .strip {
+    position: fixed;
+    pointer-events: none;
+    z-index: 99;
+    overflow: hidden;
+    transform-origin: center center;
+  }
+
+  /* ─── AFTER MESSAGE ─── */
+  #after-msg {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s;
+  }
+
+  #after-msg.show {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  #after-msg .msg-text {
+    font-family: 'Special Elite', serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    color: #f5e6c8;
+    text-align: center;
+    text-shadow: 0 0 40px rgba(255,150,50,0.5);
+    max-width: 400px;
+    line-height: 1.4;
+    animation: none;
+  }
+
+  #after-msg .reset-btn {
+    margin-top: 10px;
+    padding: 10px 30px;
+    background: transparent;
+    border: 1px solid #6a5040;
+    border-radius: 4px;
+    color: #9a8060;
+    font-family: 'Special Elite', serif;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  #after-msg .reset-btn:hover {
+    border-color: #f5e6c8;
+    color: #f5e6c8;
+  }
+
+  /* char counter */
+  #char-hint {
+    font-size: 0.75rem;
+    color: #7a6040;
+    text-align: right;
+    padding-right: 4px;
+    margin-top: 4px;
+    font-style: italic;
+    min-height: 16px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="fx-canvas"></canvas>
+<div id="after-msg">
+  <div class="msg-text" id="after-text"></div>
+  <button class="reset-btn" onclick="reset()">write again</button>
+</div>
+
+<div id="intro">
+  <h1>The Vent Box</h1>
+  <p>Say everything you're holding in. No one will see it. Then let it go.</p>
+
+  <div id="paper-wrap">
+    <div id="paper">
+      <textarea id="vent-input" placeholder="Start typing... it's safe here." spellcheck="false"></textarea>
+    </div>
+    <div id="char-hint"></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="action-btn" id="shred-btn" disabled>✂ shred it</button>
+    <button class="action-btn" id="burn-btn" disabled>🔥 burn it</button>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────
+const input    = document.getElementById('vent-input');
+const shredBtn = document.getElementById('shred-btn');
+const burnBtn  = document.getElementById('burn-btn');
+const canvas   = document.getElementById('fx-canvas');
+const ctx      = canvas.getContext('2d');
+const afterMsg = document.getElementById('after-msg');
+const afterTxt = document.getElementById('after-text');
+const charHint = document.getElementById('char-hint');
+const intro    = document.getElementById('intro');
+
+let particles = [];
+let strips    = [];
+let animId    = null;
+let phase     = 'idle'; // idle | shredding | burning | done
+
+const afterMessages = [
+  "You don't have to solve everything alone ~ the Math & Engineering Tutoring Centers",
+  "Vented. Processed. Supported. ~ the Math & Engineering Tutoring Centers",
+  "Tutoring helps. So does breathing. ~ the Math & Engineering Tutoring Centers",
+  "Complex problems. Real solutions. Real people. Visit the Math & Engineering Tutoring Centers.",
+  "Drop the stress. Pick up the support. ~ the Math & Engineering Tutoring Centers",
+  "Academic struggles are temporary. Community isn't. ~ the Math & Engineering Tutoring Centers",
+];
+
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+input.addEventListener('input', () => {
+  const hasText = input.value.trim().length > 0;
+  shredBtn.disabled = !hasText;
+  burnBtn.disabled  = !hasText;
+  charHint.textContent = hasText ? `${input.value.length} characters — ready to destroy` : '';
+});
+
+// ─── SHRED ───────────────────────────────────────
+shredBtn.addEventListener('click', () => {
+  if (phase !== 'idle') return;
+  phase = 'shredding';
+  shredBtn.disabled = true;
+  burnBtn.disabled  = true;
+
+  const paper = document.getElementById('paper');
+  const rect  = paper.getBoundingClientRect();
+  const numStrips = 16;
+  const stripW = rect.width / numStrips;
+
+  // Hide the real paper immediately so text is gone
+  intro.style.visibility = 'hidden';
+
+  // Create strips
+  for (let i = 0; i < numStrips; i++) {
+    const s = document.createElement('div');
+    s.className = 'strip';
+    s.style.left   = (rect.left + i * stripW) + 'px';
+    s.style.top    = rect.top + 'px';
+    s.style.width  = stripW + 'px';
+    s.style.height = rect.height + 'px';
+    s.style.background = '#f5f0e8';
+    s.style.backgroundImage = `repeating-linear-gradient(transparent, transparent 31px, rgba(180,160,120,0.25) 31px, rgba(180,160,120,0.25) 32px)`;
+    s.style.backgroundPosition = '0 40px';
+    s.style.overflow = 'hidden';
+    document.body.appendChild(s);
+    // slower: lower initial vy, lower acceleration
+    strips.push({ el: s, vy: 0.5 + Math.random() * 1.2, vr: (Math.random()-0.5)*5, x: rect.left + i * stripW, y: rect.top, rot: 0 });
+  }
+
+  function animShred() {
+    strips.forEach((s, i) => {
+      s.vy += 0.18 + i * 0.005;   // gentler gravity
+      s.y  += s.vy;
+      s.rot += s.vr;
+      s.el.style.transform = `translateY(${s.y - parseFloat(s.el.style.top)}px) rotate(${s.rot}deg) scaleX(${0.98 + Math.sin(Date.now()/200 + i)*0.04})`;
+      s.el.style.opacity = Math.max(0, 1 - (s.y - rect.top) / (window.innerHeight * 0.7));
+    });
+
+    const allGone = strips.every(s => s.y > window.innerHeight);
+    if (!allGone) {
+      animId = requestAnimationFrame(animShred);
+    } else {
+      strips.forEach(s => s.el.remove());
+      strips = [];
+      showAfter();
+    }
+  }
+
+  setTimeout(() => { animId = requestAnimationFrame(animShred); }, 80);
+});
+
+// ─── BURN ────────────────────────────────────────
+burnBtn.addEventListener('click', () => {
+  if (phase !== 'idle') return;
+  phase = 'burning';
+  shredBtn.disabled = true;
+  burnBtn.disabled  = true;
+
+  const paper = document.getElementById('paper');
+  const rect  = paper.getBoundingClientRect();
+
+  // Hide intro immediately so text vanishes
+  intro.style.visibility = 'hidden';
+
+  // Draw paper snapshot on canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#f5f0e8';
+  ctx.fillRect(rect.left, rect.top, rect.width, rect.height);
+  ctx.strokeStyle = 'rgba(180,160,120,0.25)';
+  ctx.lineWidth = 1;
+  for (let y = rect.top + 40; y < rect.top + rect.height; y += 32) {
+    ctx.beginPath(); ctx.moveTo(rect.left, y); ctx.lineTo(rect.left + rect.width, y); ctx.stroke();
+  }
+
+  let embers = [];
+  const burnDuration = 120; // frames for paper to fully burn
+  let frame = 0;
+  let burnDone = false;
+
+  function spawnEmbers(x, y) {
+    // cap total embers to prevent runaway
+    if (embers.length > 200) return;
+    embers.push({
+      x, y,
+      vx: (Math.random()-0.5)*3,
+      vy: -Math.random()*4 - 1,
+      life: 1,
+      decay: 0.018 + Math.random()*0.02,
+      size: 1.5 + Math.random()*3,
+      hue: 20 + Math.random()*40,
+      smoke: false,
+    });
+  }
+
+  function animBurn() {
+    frame++;
+    const burnProgress = Math.min(1, frame / burnDuration);
+    if (burnProgress >= 1) burnDone = true;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
+
+    if (!burnDone) {
+      // Draw remaining unburned paper (burns bottom-up)
+      const burnY = rect.top + rect.height - burnProgress * rect.height;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(rect.left, rect.top);
+      ctx.lineTo(rect.left + rect.width, rect.top);
+      ctx.lineTo(rect.left + rect.width, burnY + (Math.random()-0.5)*14);
+      for (let x = rect.left + rect.width; x >= rect.left; x -= 8) {
+        ctx.lineTo(x, burnY + (Math.random()-0.5)*14 + Math.sin(x*0.1 + frame*0.3)*5);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#f5f0e8';
+      ctx.fill();
+
+      // Lined paper
+      ctx.strokeStyle = 'rgba(180,160,120,0.2)';
+      ctx.lineWidth = 1;
+      for (let y = rect.top + 40; y < rect.top + rect.height; y += 32) {
+        if (y < burnY - 10) {
+          ctx.beginPath(); ctx.moveTo(rect.left, y); ctx.lineTo(rect.left + rect.width, y); ctx.stroke();
+        }
+      }
+
+      // Ember glow on burn edge
+      const grad = ctx.createLinearGradient(0, burnY - 28, 0, burnY + 8);
+      grad.addColorStop(0, 'transparent');
+      grad.addColorStop(0.5, 'rgba(255,80,0,0.55)');
+      grad.addColorStop(1, 'rgba(255,200,0,0.25)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(rect.left, burnY - 28, rect.width, 36);
+      ctx.restore();
+
+      // Spawn embers along burn edge
+      for (let x = rect.left; x < rect.left + rect.width; x += 16) {
+        if (Math.random() < 0.35) spawnEmbers(x + (Math.random()-0.5)*10, burnY);
+      }
+
+      // Smoke from top of remaining paper
+      if (burnProgress > 0.5 && Math.random() < 0.25 && embers.length < 200) {
+        embers.push({
+          x: rect.left + Math.random() * rect.width,
+          y: rect.top + 10,
+          vx: (Math.random()-0.5)*0.7,
+          vy: -0.7 - Math.random()*1.0,
+          life: 0.5,
+          decay: 0.008,
+          size: 7 + Math.random()*7,
+          hue: 30,
+          smoke: true,
+        });
+      }
+    }
+
+    // Update & draw all particles
+    embers = embers.filter(e => e.life > 0);
+    embers.forEach(e => {
+      e.x  += e.vx;
+      e.y  += e.vy;
+      e.vy += 0.05;
+      e.vx += (Math.random()-0.5)*0.2;
+      e.life -= e.decay;
+      if (e.life <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, e.life);
+      if (e.smoke) {
+        ctx.fillStyle = '#999';
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.size, 0, Math.PI*2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = `hsl(${e.hue}, 100%, ${50 + (1-e.life)*30}%)`;
+        ctx.shadowColor = `hsl(${e.hue}, 100%, 60%)`;
+        ctx.shadowBlur = 5;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.size * e.life, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+
+    // Continue until paper is gone AND all embers have faded
+    if (!burnDone || embers.length > 0) {
+      animId = requestAnimationFrame(animBurn);
+    } else {
+      // Short canvas fade-out then show message
+      let fade = 1;
+      function fadeCanvas() {
+        fade -= 0.04;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (fade > 0) {
+          requestAnimationFrame(fadeCanvas);
+        } else {
+          ctx.globalAlpha = 1;
+          showAfter();
+        }
+      }
+      fadeCanvas();
+    }
+  }
+
+  setTimeout(() => { animId = requestAnimationFrame(animBurn); }, 150);
+});
+
+// ─── AFTER ───────────────────────────────────────
+function showAfter() {
+  afterTxt.textContent = afterMessages[Math.floor(Math.random() * afterMessages.length)];
+  afterMsg.classList.add('show');
+}
+
+function reset() {
+  if (animId) cancelAnimationFrame(animId);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.globalAlpha = 1;
+  strips.forEach(s => s.el.remove());
+  strips = [];
+  particles = [];
+  phase = 'idle';
+  afterMsg.classList.remove('show');
+  input.value = '';
+  shredBtn.disabled = true;
+  burnBtn.disabled  = true;
+  charHint.textContent = '';
+  intro.style.visibility = 'visible';
+  input.focus();
+}
+</script>
+</body>
+</html>
